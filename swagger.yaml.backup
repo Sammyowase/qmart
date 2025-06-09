@@ -1,0 +1,1314 @@
+openapi: 3.0.3
+info:
+  title: Qmart Fintech API
+  description: |
+    A comprehensive fintech backend API for QR code-based payment transactions between customers and merchants.
+    
+    ## ���️ Architecture Overview
+    The API follows a clean separation of concerns with distinct authentication flows:
+    - **Customer Authentication**: Direct signup with immediate wallet creation
+    - **Merchant Authentication**: Two-step process (signup → business info → wallet creation)
+    - **Shared Authentication**: Common functionality like OTP verification and password reset
+    
+    ## ��� Authentication Methods
+    - **JWT Bearer Token**: For API clients and mobile applications
+    - **HTTP-only Cookies**: For web applications (recommended for security)
+    
+    ## ��� Rate Limiting
+    - **General Endpoints**: 100 requests per 15 minutes per IP
+    - **Authentication Endpoints**: 5 requests per 15 minutes per IP
+    
+    ## ��� Testing Workflows
+    
+    ### Customer Journey:
+    1. POST /api/auth/customer/signup → Create customer account
+    2. POST /api/auth/verify-otp → Verify email with OTP
+    3. POST /api/auth/customer/signin → Login and get JWT token
+    
+    ### Merchant Journey:
+    1. POST /api/auth/merchant/signup → Create merchant account
+    2. POST /api/auth/verify-otp → Verify email with OTP
+    3. POST /api/auth/merchant/business-info → Complete business profile
+    4. POST /api/auth/merchant/signin → Login and get JWT token
+  version: 1.0.0
+  contact:
+    name: Qmart API Support
+    email: support@qmart.com
+
+servers:
+  - url: http://localhost:5000
+    description: Development server
+
+tags:
+  - name: Health & Info
+    description: API health checks and general information
+  - name: Customer Authentication
+    description: Customer registration, login, and account management
+  - name: Merchant Authentication
+    description: Merchant registration, business setup, and account management
+  - name: Shared Authentication
+    description: Common authentication functionality (OTP, password reset, logout)
+
+security:
+  - BearerAuth: []
+  - CookieAuth: []
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    CookieAuth:
+      type: apiKey
+      in: cookie
+      name: token
+
+  schemas:
+    SuccessResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [success]
+        message:
+          type: string
+        data:
+          type: object
+
+    ErrorResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [error]
+        message:
+          type: string
+
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: string
+          example: 507f1f77bcf86cd799439011
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        firstName:
+          type: string
+          example: John
+        lastName:
+          type: string
+          example: Doe
+        role:
+          type: string
+          enum: [customer, merchant]
+
+    WalletInfo:
+      type: object
+      properties:
+        accountNumber:
+          type: string
+          pattern: '^[0-9]{9}$'
+          example: 123456789
+        balance:
+          type: number
+          minimum: 0
+          example: 0.00
+
+    CustomerSignupRequest:
+      type: object
+      required: [email, password, firstName, lastName, phone]
+      properties:
+        email:
+          type: string
+          format: email
+          example: customer@example.com
+        password:
+          type: string
+          minLength: 6
+          example: password123
+        firstName:
+          type: string
+          minLength: 2
+          example: John
+        lastName:
+          type: string
+          minLength: 2
+          example: Doe
+        phone:
+          type: string
+          pattern: '^\+?[1-9]\d{1,14}$'
+          example: +1234567890
+
+    MerchantSignupRequest:
+      type: object
+      required: [email, password, firstName, lastName, phone]
+      properties:
+        email:
+          type: string
+          format: email
+          example: merchant@example.com
+        password:
+          type: string
+          minLength: 6
+          example: password123
+        firstName:
+          type: string
+          minLength: 2
+          example: Jane
+        lastName:
+          type: string
+          minLength: 2
+          example: Smith
+        phone:
+          type: string
+          pattern: '^\+?[1-9]\d{1,14}$'
+          example: +1234567891
+
+    BusinessInfoRequest:
+      type: object
+      required: [userId, businessName, businessType, businessAddress, businessPhone, businessEmail, taxId, businessLicense]
+      properties:
+        userId:
+          type: string
+          example: 507f1f77bcf86cd799439012
+        businessName:
+          type: string
+          minLength: 2
+          example: Jane's Store
+        businessType:
+          type: string
+          enum: [retail, restaurant, service, online, other]
+          example: retail
+        businessAddress:
+          type: object
+          required: [street, city, state, zipCode, country]
+          properties:
+            street:
+              type: string
+              minLength: 5
+              example: 123 Main Street
+            city:
+              type: string
+              minLength: 2
+              example: Lagos
+            state:
+              type: string
+              minLength: 2
+              example: Lagos
+            zipCode:
+              type: string
+              minLength: 3
+              example: 100001
+            country:
+              type: string
+              example: Nigeria
+        businessPhone:
+          type: string
+          pattern: '^\+?[1-9]\d{1,14}$'
+          example: +1234567891
+        businessEmail:
+          type: string
+          format: email
+          example: business@example.com
+        taxId:
+          type: string
+          minLength: 5
+          example: TAX123456
+        businessLicense:
+          type: string
+          minLength: 5
+          example: LIC789012
+
+    SigninRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        password:
+          type: string
+          example: password123
+
+    VerifyOTPRequest:
+      type: object
+      required: [email, otp]
+      properties:
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        otp:
+          type: string
+          pattern: '^[0-9]{6}$'
+          example: 123456
+
+paths:
+  /health:
+    get:
+      tags: [Health & Info]
+      summary: Health check endpoint
+      description: Returns the current status of the API server
+      responses:
+        '200':
+          description: API is healthy and running
+          content:
+            application/json:
+              example:
+                status: success
+                message: Qmart API is running
+                timestamp: 2024-06-08T21:47:06.935Z
+
+  /api:
+    get:
+      tags: [Health & Info]
+      summary: API information endpoint
+      description: Returns general information about the API and available endpoints
+      responses:
+        '200':
+          description: API information retrieved successfully
+          content:
+            application/json:
+              example:
+                message: Welcome to Qmart Fintech API
+                version: 1.0.0
+                documentation: /api-docs
+                endpoints:
+                  customerAuth: /api/auth/customer
+                  merchantAuth: /api/auth/merchant
+                  sharedAuth: /api/auth
+
+  /api/auth/customer/signup:
+    post:
+      tags: [Customer Authentication]
+      summary: Register a new customer
+      description: |
+        Creates a new customer account with immediate wallet creation:
+        1. Validates input data
+        2. Creates user account with 'customer' role
+        3. Generates unique 9-digit account number
+        4. Creates wallet with QR code
+        5. Sends email verification OTP
+        
+        **Testing Command:**
+        ```bash
+curl -X POST http://localhost:5000/api/auth/customer/signup \
+          -H "Content-Type: application/json" \
+          -d '{
+            "email": "customer@test.com",
+            "password": "password123",
+            "firstName": "John",
+            "lastName": "Doe",
+            "phone": "+1234567890"
+          }'
+```
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerSignupRequest'
+      responses:
+        '201':
+          description: Customer account created successfully
+          content:
+            application/json:
+              example:
+                status: success
+                message: Customer account created successfully. Please check your email for verification.
+                data:
+                  user:
+                    id: 507f1f77bcf86cd799439011
+                    email: customer@test.com
+                    firstName: John
+                    lastName: Doe
+                    role: customer
+                  wallet:
+                    accountNumber: 123456789
+                    balance: 0.00
+        '400':
+          description: Bad request - validation error or user already exists
+          content:
+            application/json:
+              example:
+                status: error
+                message: User with this email or phone already exists
+
+  /api/auth/customer/signin:
+    post:
+      tags: [Customer Authentication]
+      summary: Customer sign in
+      description: |
+        Authenticates a customer and returns JWT token:
+        1. Validates credentials
+        2. Checks account verification status
+        3. Generates JWT token
+        4. Sets HTTP-only cookie
+        
+        **Testing Command:**
+        ```bash
+curl -X POST http://localhost:5000/api/auth/customer/signin \
+          -H "Content-Type: application/json" \
+          -d '{
+            "email": "customer@test.com",
+            "password": "password123"
+          }'
+```
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SigninRequest'
+      responses:
+        '200':
+          description: Sign in successful
+          headers:
+            Set-Cookie:
+              description: JWT token in HTTP-only cookie
+              schema:
+                type: string
+          content:
+            application/json:
+              example:
+                status: success
+                message: Signin successful
+                data:
+                  user:
+                    id: 507f1f77bcf86cd799439011
+                    email: customer@test.com
+                    firstName: John
+                    lastName: Doe
+                    role: customer
+                  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        '401':
+          description: Unauthorized - invalid credentials or unverified account
+          content:
+            application/json:
+              examples:
+                invalidCredentials:
+                  value:
+                    status: error
+                    message: Invalid credentials
+                notVerified:
+                  value:
+                    status: error
+                    message: Please verify your email first
+
+  /api/auth/merchant/signup:
+    post:
+      tags: [Merchant Authentication]
+      summary: Register a new merchant
+      description: |
+        Creates a new merchant account (Step 1 of 2-step process):
+        1. Validates input data
+        2. Creates user account with 'merchant' role
+        3. Sends email verification OTP
+        
+        **Note**: After email verification, merchant must complete business information.
+        
+        **Testing Command:**
+        ```bash
+curl -X POST http://localhost:5000/api/auth/merchant/signup \
+          -H "Content-Type: application/json" \
+          -d '{
+            "email": "merchant@test.com",
+            "password": "password123",
+            "firstName": "Jane",
+            "lastName": "Smith",
+            "phone": "+1234567891"
+          }'
+```
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MerchantSignupRequest'
+      responses:
+        '201':
+          description: Merchant account created successfully
+          content:
+            application/json:
+              example:
+                status: success
+                message: Merchant account created successfully. Please verify your email and complete business information.
+                data:
+                  user:
+                    id: 507f1f77bcf86cd799439012
+                    email: merchant@test.com
+                    firstName: Jane
+                    lastName: Smith
+                    role: merchant
+                  message: Please verify your email and complete business information
+
+  /api/auth/merchant/signin:
+    post:
+      tags: [Merchant Authentication]
+      summary: Merchant sign in
+      description: |
+        Authenticates a merchant and returns JWT token.
+        Same process as customer signin but for merchant accounts.
+        
+        **Testing Command:**
+        ```bash
+curl -X POST http://localhost:5000/api/auth/merchant/signin \
+          -H "Content-Type: application/json" \
+          -d '{
+            "email": "merchant@test.com",
+            "password": "password123"
+          }'
+```
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SigninRequest'
+      responses:
+        '200':
+          description: Sign in successful
+          content:
+            application/json:
+              example:
+                status: success
+                message: Signin successful
+                data:
+                  user:
+                    id: 507f1f77bcf86cd799439012
+                    email: merchant@test.com
+                    firstName: Jane
+                    lastName: Smith
+                    role: merchant
+                  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+  /api/auth/merchant/business-info:
+    post:
+      tags: [Merchant Authentication]
+      summary: Complete merchant business information
+      description: |
+        Completes merchant registration (Step 2 of 2-step process):
+        1. Validates business data
+        2. Creates merchant profile
+        3. Generates unique account number and wallet
+        4. Creates QR code for merchant wallet
+        
+        **Prerequisites**: Merchant must be email verified.
+        
+        **Testing Command:**
+        ```bash
+curl -X POST http://localhost:5000/api/auth/merchant/business-info \
+          -H "Content-Type: application/json" \
+          -H "Authorization: Bearer <your_jwt_token>" \
+          -d '{
+            "userId": "507f1f77bcf86cd799439012",
+            "businessName": "Jane'\''s Store",
+            "businessType": "retail",
+            "businessAddress": {
+              "street": "123 Main Street",
+              "city": "Lagos",
+              "state": "Lagos",
+              "zipCode": "100001",
+              "country": "Nigeria"
+            },
+            "businessPhone": "+1234567891",
+            "businessEmail": "business@test.com",
+            "taxId": "TAX123456",
+            "businessLicense": "LIC789012"
+          }'
+```
+      security:
+        - BearerAuth: []
+        - CookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BusinessInfoRequest'
+      responses:
+        '200':
+          description: Business information added successfully
+          content:
+            application/json:
+              example:
+                status: success
+                message: Business information added successfully.
+                data:
+                  merchantProfile:
+                    userId: 507f1f77bcf86cd799439012
+                    businessName: Jane's Store
+                    businessType: retail
+                    isVerified: false
+                  wallet:
+                    accountNumber: 987654321
+                    balance: 0.00
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              examples:
+                notVerified:
+                  value:
+                    status: error
+                    message: Please verify your email first
+                alreadyExists:
+                  value:
+                    status: error
+                    message: Business information already exists
+
+  /api/auth/verify-otp:
+    post:
+      tags: [Shared Authentication]
+      summary: Verify email OTP
+      description: |
+        Verifies the OTP sent to user's email for account verification:
+        1. Validates OTP code and expiration
+        2. Marks OTP as used
+        3. Activates user account
+        
+        **OTP Details**:
+        - 6-digit numeric code
+        - 15-minute expiration
+        - Single-use only
+        
+        **Testing Command:**
+        ```bash
+curl -X POST http://localhost:5000/api/auth/verify-otp \
+          -H "Content-Type: application/json" \
+          -d '{
+            "email": "user@test.com",
+            "otp": "123456"
+          }'
+```
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyOTPRequest'
+      responses:
+        '200':
+          description: Email verified successfully
+          content:
+            application/json:
+              example:
+                status: success
+                message: Email verified successfully
+        '400':
+          description: Bad request - invalid or expired OTP
+          content:
+            application/json:
+              examples:
+                invalidOTP:
+                  value:
+                    status: error
+                    message: Invalid or expired OTP
+                expiredOTP:
+                  value:
+                    status: error
+                    message: OTP has expired
+
+  /api/auth/forgot-password:
+    post:
+      tags: [Shared Authentication]
+      summary: Request password reset
+      description: |
+        Initiates password reset process:
+        1. Validates user email
+        2. Generates 6-digit OTP
+        3. Sends reset email with OTP
+        
+        **Testing Command:**
+        ```bash
+curl -X POST http://localhost:5000/api/auth/forgot-password \
+          -H "Content-Type: application/json" \
+          -d '{
+            "email": "user@test.com"
+          }'
+```
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: user@test.com
+      responses:
+        '200':
+          description: Password reset OTP sent successfully
+          content:
+            application/json:
+              example:
+                status: success
+                message: Password reset OTP sent to your email
+
+  /api/auth/reset-password:
+    post:
+      tags: [Shared Authentication]
+      summary: Reset password with OTP
+      description: |
+        Completes password reset process:
+        1. Validates OTP code and expiration
+        2. Marks OTP as used
+        3. Updates user password (bcrypt hashed)
+        
+        **Testing Command:**
+        ```bash
+curl -X POST http://localhost:5000/api/auth/reset-password \
+          -H "Content-Type: application/json" \
+          -d '{
+            "email": "user@test.com",
+            "otp": "123456",
+            "newPassword": "newpassword123"
+          }'
+```
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, otp, newPassword]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: user@test.com
+                otp:
+                  type: string
+                  pattern: '^[0-9]{6}$'
+                  example: 123456
+                newPassword:
+                  type: string
+                  minLength: 6
+                  example: newpassword123
+      responses:
+        '200':
+          description: Password reset successfully
+          content:
+            application/json:
+              example:
+                status: success
+                message: Password reset successfully
+
+  /api/auth/signout:
+    post:
+      tags: [Shared Authentication]
+      summary: Sign out user
+      description: |
+        Signs out the current user:
+        1. Clears JWT token cookie
+        2. Invalidates session
+        
+        **Testing Command:**
+        ```bash
+curl -X POST http://localhost:5000/api/auth/signout \
+          -H "Cookie: token=<your_jwt_token>"
+```
+      responses:
+        '200':
+          description: Sign out successful
+          headers:
+            Set-Cookie:
+              description: Clears the JWT token cookie
+              schema:
+                type: string
+          content:
+            application/json:
+              example:
+                status: success
+                message: Signout successful
+tName, lastName, phone]
+      properties:
+        email:
+          type: string
+          format: email
+          example: merchant@example.com
+        password:
+          type: string
+          minLength: 6
+          example: password123
+        firstName:
+          type: string
+          minLength: 2
+          example: Jane
+        lastName:
+          type: string
+          minLength: 2
+          example: Smith
+        phone:
+          type: string
+          pattern: '^\+?[1-9]\d{1,14}$'
+          example: +1234567891
+
+    BusinessInfoRequest:
+      type: object
+      required: [userId, businessName, businessType, businessAddress, businessPhone, businessEmail, taxId, businessLicense]
+      properties:
+        userId:
+          type: string
+          example: 507f1f77bcf86cd799439012
+        businessName:
+          type: string
+          minLength: 2
+          example: Jane's Store
+        businessType:
+          type: string
+          enum: [retail, restaurant, service, online, other]
+          example: retail
+        businessAddress:
+          type: object
+          required: [street, city, state, zipCode, country]
+          properties:
+            street:
+              type: string
+              minLength: 5
+              example: 123 Main Street
+            city:
+              type: string
+              minLength: 2
+              example: Lagos
+            state:
+              type: string
+              minLength: 2
+              example: Lagos
+            zipCode:
+              type: string
+              minLength: 3
+              example: 100001
+            country:
+              type: string
+              example: Nigeria
+        businessPhone:
+          type: string
+          pattern: '^\+?[1-9]\d{1,14}$'
+          example: +1234567891
+        businessEmail:
+          type: string
+          format: email
+          example: business@example.com
+        taxId:
+          type: string
+          minLength: 5
+          example: TAX123456
+        businessLicense:
+          type: string
+          minLength: 5
+          example: LIC789012
+
+    SigninRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        password:
+          type: string
+          example: password123
+
+    VerifyOTPRequest:
+      type: object
+      required: [email, otp]
+      properties:
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        otp:
+          type: string
+          pattern: '^[0-9]{6}$'
+          example: 123456
+
+paths:
+  /health:
+    get:
+      tags: [Health & Info]
+      summary: Health check endpoint
+      description: Returns the current status of the API server
+      responses:
+        '200':
+          description: API is healthy and running
+          content:
+            application/json:
+              example:
+                status: success
+                message: Qmart API is running
+                timestamp: 2024-06-08T21:47:06.935Z
+
+  /api:
+    get:
+      tags: [Health & Info]
+      summary: API information endpoint
+      description: Returns general information about the API and available endpoints
+      responses:
+        '200':
+          description: API information retrieved successfully
+          content:
+            application/json:
+              example:
+                message: Welcome to Qmart Fintech API
+                version: 1.0.0
+                documentation: /api-docs
+                endpoints:
+                  customerAuth: /api/auth/customer
+                  merchantAuth: /api/auth/merchant
+                  sharedAuth: /api/auth
+
+  /api/auth/customer/signup:
+    post:
+      tags: [Customer Authentication]
+      summary: Register a new customer
+      description: |
+        Creates a new customer account with immediate wallet creation:
+        1. Validates input data
+        2. Creates user account with 'customer' role
+        3. Generates unique 9-digit account number
+        4. Creates wallet with QR code
+        5. Sends email verification OTP
+        
+        **Testing Command:**
+        ```bash
+        curl -X POST http://localhost:5000/api/auth/customer/signup \
+          -H "Content-Type: application/json" \
+          -d '{
+            "email": "customer@test.com",
+            "password": "password123",
+            "firstName": "John",
+            "lastName": "Doe",
+            "phone": "+1234567890"
+          }'
+        ```
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerSignupRequest'
+      responses:
+        '201':
+          description: Customer account created successfully
+          content:
+            application/json:
+              example:
+                status: success
+                message: Customer account created successfully. Please check your email for verification.
+                data:
+                  user:
+                    id: 507f1f77bcf86cd799439011
+                    email: customer@test.com
+                    firstName: John
+                    lastName: Doe
+                    role: customer
+                  wallet:
+                    accountNumber: 123456789
+                    balance: 0.00
+        '400':
+          description: Bad request - validation error or user already exists
+          content:
+            application/json:
+              example:
+                status: error
+                message: User with this email or phone already exists
+
+  /api/auth/customer/signin:
+    post:
+      tags: [Customer Authentication]
+      summary: Customer sign in
+      description: |
+        Authenticates a customer and returns JWT token:
+        1. Validates credentials
+        2. Checks account verification status
+        3. Generates JWT token
+        4. Sets HTTP-only cookie
+        
+        **Testing Command:**
+        ```bash
+        curl -X POST http://localhost:5000/api/auth/customer/signin \
+          -H "Content-Type: application/json" \
+          -d '{
+            "email": "customer@test.com",
+            "password": "password123"
+          }'
+        ```
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SigninRequest'
+      responses:
+        '200':
+          description: Sign in successful
+          headers:
+            Set-Cookie:
+              description: JWT token in HTTP-only cookie
+              schema:
+                type: string
+          content:
+            application/json:
+              example:
+                status: success
+                message: Signin successful
+                data:
+                  user:
+                    id: 507f1f77bcf86cd799439011
+                    email: customer@test.com
+                    firstName: John
+                    lastName: Doe
+                    role: customer
+                  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        '401':
+          description: Unauthorized - invalid credentials or unverified account
+          content:
+            application/json:
+              examples:
+                invalidCredentials:
+                  value:
+                    status: error
+                    message: Invalid credentials
+                notVerified:
+                  value:
+                    status: error
+                    message: Please verify your email first
+
+  /api/auth/merchant/signup:
+    post:
+      tags: [Merchant Authentication]
+      summary: Register a new merchant
+      description: |
+        Creates a new merchant account (Step 1 of 2-step process):
+        1. Validates input data
+        2. Creates user account with 'merchant' role
+        3. Sends email verification OTP
+        
+        **Note**: After email verification, merchant must complete business information.
+        
+        **Testing Command:**
+        ```bash
+        curl -X POST http://localhost:5000/api/auth/merchant/signup \
+          -H "Content-Type: application/json" \
+          -d '{
+            "email": "merchant@test.com",
+            "password": "password123",
+            "firstName": "Jane",
+            "lastName": "Smith",
+            "phone": "+1234567891"
+          }'
+        ```
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MerchantSignupRequest'
+      responses:
+        '201':
+          description: Merchant account created successfully
+          content:
+            application/json:
+              example:
+                status: success
+                message: Merchant account created successfully. Please verify your email and complete business information.
+                data:
+                  user:
+                    id: 507f1f77bcf86cd799439012
+                    email: merchant@test.com
+                    firstName: Jane
+                    lastName: Smith
+                    role: merchant
+                  message: Please verify your email and complete business information
+
+  /api/auth/merchant/signin:
+    post:
+      tags: [Merchant Authentication]
+      summary: Merchant sign in
+      description: |
+        Authenticates a merchant and returns JWT token.
+        Same process as customer signin but for merchant accounts.
+        
+        **Testing Command:**
+        ```bash
+        curl -X POST http://localhost:5000/api/auth/merchant/signin \
+          -H "Content-Type: application/json" \
+          -d '{
+            "email": "merchant@test.com",
+            "password": "password123"
+          }'
+        ```
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SigninRequest'
+      responses:
+        '200':
+          description: Sign in successful
+          content:
+            application/json:
+              example:
+                status: success
+                message: Signin successful
+                data:
+                  user:
+                    id: 507f1f77bcf86cd799439012
+                    email: merchant@test.com
+                    firstName: Jane
+                    lastName: Smith
+                    role: merchant
+                  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+  /api/auth/merchant/business-info:
+    post:
+      tags: [Merchant Authentication]
+      summary: Complete merchant business information
+      description: |
+        Completes merchant registration (Step 2 of 2-step process):
+        1. Validates business data
+        2. Creates merchant profile
+        3. Generates unique account number and wallet
+        4. Creates QR code for merchant wallet
+        
+        **Prerequisites**: Merchant must be email verified.
+        
+        **Testing Command:**
+        ```bash
+        curl -X POST http://localhost:5000/api/auth/merchant/business-info \
+          -H "Content-Type: application/json" \
+          -H "Authorization: Bearer <your_jwt_token>" \
+          -d '{
+            "userId": "507f1f77bcf86cd799439012",
+            "businessName": "Jane'\''s Store",
+            "businessType": "retail",
+            "businessAddress": {
+              "street": "123 Main Street",
+              "city": "Lagos",
+              "state": "Lagos",
+              "zipCode": "100001",
+              "country": "Nigeria"
+            },
+            "businessPhone": "+1234567891",
+            "businessEmail": "business@test.com",
+            "taxId": "TAX123456",
+            "businessLicense": "LIC789012"
+          }'
+        ```
+      security:
+        - BearerAuth: []
+        - CookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BusinessInfoRequest'
+      responses:
+        '200':
+          description: Business information added successfully
+          content:
+            application/json:
+              example:
+                status: success
+                message: Business information added successfully.
+                data:
+                  merchantProfile:
+                    userId: 507f1f77bcf86cd799439012
+                    businessName: Jane's Store
+                    businessType: retail
+                    isVerified: false
+                  wallet:
+                    accountNumber: 987654321
+                    balance: 0.00
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              examples:
+                notVerified:
+                  value:
+                    status: error
+                    message: Please verify your email first
+                alreadyExists:
+                  value:
+                    status: error
+                    message: Business information already exists
+
+  /api/auth/verify-otp:
+    post:
+      tags: [Shared Authentication]
+      summary: Verify email OTP
+      description: |
+        Verifies the OTP sent to user's email for account verification:
+        1. Validates OTP code and expiration
+        2. Marks OTP as used
+        3. Activates user account
+        
+        **OTP Details**:
+        - 6-digit numeric code
+        - 15-minute expiration
+        - Single-use only
+        
+        **Testing Command:**
+        ```bash
+        curl -X POST http://localhost:5000/api/auth/verify-otp \
+          -H "Content-Type: application/json" \
+          -d '{
+            "email": "user@test.com",
+            "otp": "123456"
+          }'
+        ```
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyOTPRequest'
+      responses:
+        '200':
+          description: Email verified successfully
+          content:
+            application/json:
+              example:
+                status: success
+                message: Email verified successfully
+        '400':
+          description: Bad request - invalid or expired OTP
+          content:
+            application/json:
+              examples:
+                invalidOTP:
+                  value:
+                    status: error
+                    message: Invalid or expired OTP
+                expiredOTP:
+                  value:
+                    status: error
+                    message: OTP has expired
+
+  /api/auth/forgot-password:
+    post:
+      tags: [Shared Authentication]
+      summary: Request password reset
+      description: |
+        Initiates password reset process:
+        1. Validates user email
+        2. Generates 6-digit OTP
+        3. Sends reset email with OTP
+        
+        **Testing Command:**
+        ```bash
+        curl -X POST http://localhost:5000/api/auth/forgot-password \
+          -H "Content-Type: application/json" \
+          -d '{
+            "email": "user@test.com"
+          }'
+        ```
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: user@test.com
+      responses:
+        '200':
+          description: Password reset OTP sent successfully
+          content:
+            application/json:
+              example:
+                status: success
+                message: Password reset OTP sent to your email
+
+  /api/auth/reset-password:
+    post:
+      tags: [Shared Authentication]
+      summary: Reset password with OTP
+      description: |
+        Completes password reset process:
+        1. Validates OTP code and expiration
+        2. Marks OTP as used
+        3. Updates user password (bcrypt hashed)
+        
+        **Testing Command:**
+        ```bash
+        curl -X POST http://localhost:5000/api/auth/reset-password \
+          -H "Content-Type: application/json" \
+          -d '{
+            "email": "user@test.com",
+            "otp": "123456",
+            "newPassword": "newpassword123"
+          }'
+        ```
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, otp, newPassword]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: user@test.com
+                otp:
+                  type: string
+                  pattern: '^[0-9]{6}$'
+                  example: 123456
+                newPassword:
+                  type: string
+                  minLength: 6
+                  example: newpassword123
+      responses:
+        '200':
+          description: Password reset successfully
+          content:
+            application/json:
+              example:
+                status: success
+                message: Password reset successfully
+
+  /api/auth/signout:
+    post:
+      tags: [Shared Authentication]
+      summary: Sign out user
+      description: |
+        Signs out the current user:
+        1. Clears JWT token cookie
+        2. Invalidates session
+        
+        **Testing Command:**
+        ```bash
+        curl -X POST http://localhost:5000/api/auth/signout \
+          -H "Cookie: token=<your_jwt_token>"
+        ```
+      responses:
+        '200':
+          description: Sign out successful
+          headers:
+            Set-Cookie:
+              description: Clears the JWT token cookie
+              schema:
+                type: string
+          content:
+            application/json:
+              example:
+                status: success
+                message: Signout successful
