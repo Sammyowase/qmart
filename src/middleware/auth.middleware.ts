@@ -10,7 +10,7 @@ interface AuthenticatedRequest extends Request {
   };
 }
 
-export const authenticateToken = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+export const authenticateToken = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     let token: string | undefined;
 
@@ -26,37 +26,41 @@ export const authenticateToken = async (req: AuthenticatedRequest, res: Response
     }
 
     if (!token) {
-      return res.status(401).json({
+      res.status(401).json({
         status: 'error',
         message: 'Access token is required',
       });
+      return;
     }
 
     const jwtSecret = process.env.JWT_SECRET;
     if (!jwtSecret) {
-      return res.status(500).json({
+      res.status(500).json({
         status: 'error',
         message: 'JWT secret not configured',
       });
+      return;
     }
 
     // Verify token
     const decoded = jwt.verify(token, jwtSecret) as any;
-    
+
     // Check if user still exists
     const user = await User.findById(decoded.userId);
     if (!user) {
-      return res.status(401).json({
+      res.status(401).json({
         status: 'error',
         message: 'User no longer exists',
       });
+      return;
     }
 
     if (!user.isActive) {
-      return res.status(401).json({
+      res.status(401).json({
         status: 'error',
         message: 'User account is deactivated',
       });
+      return;
     }
 
     // Add user info to request
@@ -68,7 +72,7 @@ export const authenticateToken = async (req: AuthenticatedRequest, res: Response
 
     next();
   } catch (error) {
-    return res.status(401).json({
+    res.status(401).json({
       status: 'error',
       message: 'Invalid or expired token',
     });
@@ -76,26 +80,28 @@ export const authenticateToken = async (req: AuthenticatedRequest, res: Response
 };
 
 export const requireRole = (roles: string[]) => {
-  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  return (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
     if (!req.user) {
-      return res.status(401).json({
+      res.status(401).json({
         status: 'error',
         message: 'Authentication required',
       });
+      return;
     }
 
     if (!roles.includes(req.user.role)) {
-      return res.status(403).json({
+      res.status(403).json({
         status: 'error',
         message: 'Insufficient permissions',
       });
+      return;
     }
 
     next();
   };
 };
 
-export const optionalAuth = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+export const optionalAuth = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     let token: string | undefined;
 
@@ -113,7 +119,7 @@ export const optionalAuth = async (req: AuthenticatedRequest, res: Response, nex
       if (jwtSecret) {
         const decoded = jwt.verify(token, jwtSecret) as any;
         const user = await User.findById(decoded.userId);
-        
+
         if (user && user.isActive) {
           req.user = {
             userId: decoded.userId,
