@@ -80,9 +80,34 @@ export const createMetricsTracker = () => {
       otpGenerated.labels(type).inc();
     },
 
-    trackWalletOperation: (operation: 'create' | 'update', userType: 'customer' | 'merchant') => {
+    trackWalletOperation: (operation: 'create' | 'transfer' | 'credit' | 'debit', userType: 'customer' | 'merchant', status: 'success' | 'failure' = 'success') => {
       const { walletOperations } = require('../monitoring/metrics');
-      walletOperations.labels(operation, userType).inc();
+      walletOperations.labels(operation, userType, status).inc();
+    },
+
+    trackTransactionAmount: (amount: number, type: 'transfer' | 'deposit' | 'withdrawal', method: 'account_number' | 'qr_code') => {
+      const { transactionAmount } = require('../monitoring/metrics');
+      transactionAmount.labels(type, method).observe(amount);
+    },
+
+    trackKYCRequest: (tier: number, status: 'pending' | 'approved' | 'rejected') => {
+      const { kycRequests } = require('../monitoring/metrics');
+      kycRequests.labels(tier.toString(), status).inc();
+    },
+
+    updateTotalWalletBalance: (totalBalance: number) => {
+      const { walletBalance } = require('../monitoring/metrics');
+      walletBalance.set(totalBalance);
+    },
+
+    updateDailyTransactionVolume: (volume: number) => {
+      const { dailyTransactionVolume } = require('../monitoring/metrics');
+      dailyTransactionVolume.set(volume);
+    },
+
+    updateActiveWallets: (count: number) => {
+      const { activeWallets } = require('../monitoring/metrics');
+      activeWallets.set(count);
     },
 
     trackDatabaseOperation: async <T>(
@@ -92,7 +117,7 @@ export const createMetricsTracker = () => {
     ): Promise<T> => {
       const { databaseOperations } = require('../monitoring/metrics');
       const timer = databaseOperations.labels(operation, collection).startTimer();
-      
+
       try {
         const result = await dbOperation();
         timer();

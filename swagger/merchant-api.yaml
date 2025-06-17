@@ -1,0 +1,493 @@
+openapi: 3.0.3
+info:
+  title: Qmart Merchant API
+  description: |
+    # Qmart Merchant API Documentation
+    
+    Complete API documentation for Qmart fintech platform merchant operations.
+    
+    ## Features
+    - **Business Registration** - Multi-step merchant onboarding process
+    - **Payment Processing** - Accept payments from customers
+    - **Business Wallet** - Dedicated business account management
+    - **Transaction Analytics** - Detailed business transaction reporting
+    - **QR Code Payments** - Generate QR codes for customer payments
+    - **KYC Compliance** - Business verification and compliance
+    
+    ## Merchant Registration Process
+    1. **Initial Signup** - Basic account creation with email verification
+    2. **Business Information** - Submit business details and documents
+    3. **Verification** - Admin review and approval process
+    4. **Account Activation** - Business wallet creation and API access
+    
+    ## Authentication
+    All protected endpoints require a valid JWT token in the Authorization header:
+    ```
+    Authorization: Bearer <your_jwt_token>
+    ```
+    
+    ## Rate Limits
+    - **Authentication**: 5 requests per 15 minutes
+    - **Payment Processing**: 20 requests per minute
+    - **General API**: 100 requests per 15 minutes
+    - **Business Operations**: 50 requests per minute
+    
+    ## Business KYC Tiers
+    - **Tier 1** (Basic): ₦100,000 daily limit
+    - **Tier 2** (Verified): ₦1,000,000 daily limit
+    - **Tier 3** (Premium): ₦10,000,000 daily limit
+    
+  version: 1.0.0
+  contact:
+    name: Qmart Merchant Support
+    email: merchant-support@qmart.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:5000
+    description: Development server
+  - url: https://api.qmart.com
+    description: Production server
+
+security:
+  - BearerAuth: []
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from merchant login endpoint
+
+  schemas:
+    # Merchant Authentication Schemas
+    MerchantSignupRequest:
+      type: object
+      required: [email, password, firstName, lastName, phone]
+      properties:
+        email:
+          type: string
+          format: email
+          example: merchant@business.com
+          description: Business email address
+        password:
+          type: string
+          minLength: 8
+          example: SecurePass123!
+          description: Strong password (min 8 characters)
+        firstName:
+          type: string
+          minLength: 2
+          example: Jane
+          description: Merchant's first name
+        lastName:
+          type: string
+          minLength: 2
+          example: Smith
+          description: Merchant's last name
+        phone:
+          type: string
+          pattern: '^\\+?[1-9]\\d{1,14}$'
+          example: +2348012345678
+          description: Business contact phone number
+
+    BusinessInfoRequest:
+      type: object
+      required: [businessName, businessType, businessAddress, cacNumber]
+      properties:
+        businessName:
+          type: string
+          minLength: 2
+          maxLength: 100
+          example: Smith Electronics Ltd
+          description: Registered business name
+        businessType:
+          type: string
+          enum: [retail, wholesale, service, technology, food, fashion, health, education, other]
+          example: retail
+          description: Type of business
+        businessAddress:
+          type: object
+          required: [street, city, state, country]
+          properties:
+            street:
+              type: string
+              example: 123 Business Street
+            city:
+              type: string
+              example: Lagos
+            state:
+              type: string
+              example: Lagos State
+            country:
+              type: string
+              example: Nigeria
+            postalCode:
+              type: string
+              example: 100001
+        cacNumber:
+          type: string
+          pattern: '^RC[0-9]+$'
+          example: RC1234567
+          description: Corporate Affairs Commission registration number
+        taxId:
+          type: string
+          example: 12345678-0001
+          description: Tax identification number
+        website:
+          type: string
+          format: uri
+          example: https://smithelectronics.com
+          description: Business website (optional)
+        description:
+          type: string
+          maxLength: 500
+          example: Electronics retail and repair services
+          description: Business description
+
+    MerchantSigninRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          example: merchant@business.com
+        password:
+          type: string
+          example: SecurePass123!
+
+    # Business Wallet Schemas
+    BusinessWalletDetails:
+      type: object
+      properties:
+        accountNumber:
+          type: string
+          pattern: '^[0-9]{9}$'
+          example: 987654321
+          description: 9-digit business account number
+        balance:
+          type: number
+          format: decimal
+          example: 250000.75
+          description: Current business wallet balance in Naira
+        formattedBalance:
+          type: string
+          example: ₦250,000.75
+          description: Formatted balance with currency symbol
+        businessName:
+          type: string
+          example: Smith Electronics Ltd
+        kycTier:
+          type: integer
+          enum: [1, 2, 3]
+          example: 2
+          description: Current business KYC verification tier
+        dailyLimit:
+          type: number
+          example: 1000000
+          description: Daily transaction limit in Naira
+        formattedDailyLimit:
+          type: string
+          example: ₦1,000,000
+          description: Formatted daily limit
+        status:
+          type: string
+          enum: [active, frozen, suspended, pending_verification]
+          example: active
+          description: Current business account status
+        verificationStatus:
+          type: string
+          enum: [pending, verified, rejected]
+          example: verified
+          description: Business verification status
+        createdAt:
+          type: string
+          format: date-time
+          example: 2024-01-15T10:30:00Z
+
+    # Payment Processing Schemas
+    PaymentRequest:
+      type: object
+      required: [amount, description]
+      properties:
+        amount:
+          type: number
+          format: decimal
+          minimum: 0.01
+          maximum: 10000000
+          example: 15000.00
+          description: Payment amount in Naira
+        description:
+          type: string
+          maxLength: 200
+          example: Payment for electronics purchase
+          description: Payment description for customer
+        customerEmail:
+          type: string
+          format: email
+          example: customer@example.com
+          description: Customer email (optional)
+        reference:
+          type: string
+          maxLength: 50
+          example: INV-2024-001
+          description: Merchant reference (optional)
+        expiresIn:
+          type: integer
+          minimum: 300
+          maximum: 86400
+          default: 3600
+          example: 3600
+          description: Payment link expiry in seconds
+
+    QRCodeRequest:
+      type: object
+      required: [amount]
+      properties:
+        amount:
+          type: number
+          format: decimal
+          minimum: 0.01
+          maximum: 10000000
+          example: 5000.00
+          description: Fixed amount for QR code payment
+        description:
+          type: string
+          maxLength: 200
+          example: Product purchase
+          description: Payment description
+        expiresIn:
+          type: integer
+          minimum: 300
+          maximum: 86400
+          default: 1800
+          example: 1800
+          description: QR code expiry in seconds (30 minutes default)
+
+    # Transaction Schemas
+    BusinessTransaction:
+      type: object
+      properties:
+        transactionId:
+          type: string
+          example: 550e8400-e29b-41d4-a716-446655440000
+          description: Unique transaction identifier
+        amount:
+          type: number
+          example: 15000.00
+        formattedAmount:
+          type: string
+          example: ₦15,000.00
+        type:
+          type: string
+          enum: [payment_received, withdrawal, transfer, fee]
+          example: payment_received
+        method:
+          type: string
+          enum: [qr_code, payment_link, direct_transfer]
+          example: qr_code
+        status:
+          type: string
+          enum: [pending, completed, failed, cancelled]
+          example: completed
+        customerInfo:
+          type: object
+          properties:
+            name:
+              type: string
+              example: John Doe
+            email:
+              type: string
+              example: customer@example.com
+            accountNumber:
+              type: string
+              example: 234567890
+        description:
+          type: string
+          example: Payment for electronics purchase
+        reference:
+          type: string
+          example: QMT12345678
+          description: Transaction reference
+        merchantReference:
+          type: string
+          example: INV-2024-001
+          description: Merchant's internal reference
+        fees:
+          type: object
+          properties:
+            transactionFee:
+              type: number
+              example: 50.00
+            platformFee:
+              type: number
+              example: 25.00
+            totalFees:
+              type: number
+              example: 75.00
+        createdAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+
+    # Analytics Schemas
+    BusinessAnalytics:
+      type: object
+      properties:
+        summary:
+          type: object
+          properties:
+            totalRevenue:
+              type: number
+              example: 500000.00
+            formattedTotalRevenue:
+              type: string
+              example: ₦500,000.00
+            totalTransactions:
+              type: integer
+              example: 150
+            averageTransactionValue:
+              type: number
+              example: 3333.33
+            formattedAverageValue:
+              type: string
+              example: ₦3,333.33
+            totalFees:
+              type: number
+              example: 7500.00
+            formattedTotalFees:
+              type: string
+              example: ₦7,500.00
+        dailyStats:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+                format: date
+                example: 2024-01-15
+              revenue:
+                type: number
+                example: 25000.00
+              transactions:
+                type: integer
+                example: 8
+              fees:
+                type: number
+                example: 375.00
+        topCustomers:
+          type: array
+          items:
+            type: object
+            properties:
+              customerName:
+                type: string
+                example: John Doe
+              totalSpent:
+                type: number
+                example: 50000.00
+              transactionCount:
+                type: integer
+                example: 12
+
+    # Response Schemas
+    SuccessResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        message:
+          type: string
+          example: Operation completed successfully
+        data:
+          type: object
+          description: Response data (varies by endpoint)
+
+    ErrorResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: error
+        message:
+          type: string
+          example: Validation failed
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+                example: businessName
+              message:
+                type: string
+                example: Business name is required
+              code:
+                type: string
+                example: required_field
+
+paths:
+  # Merchant Authentication
+  /api/auth/merchant/signup:
+    post:
+      tags: [Merchant Authentication]
+      summary: Register new merchant account
+      description: |
+        Create a new merchant account with email verification.
+        This is the first step in the merchant onboarding process.
+        
+        **Process:**
+        1. Submit basic registration details
+        2. Receive OTP via email
+        3. Verify OTP using `/api/auth/verify-otp`
+        4. Submit business information using `/api/auth/merchant/business-info`
+        5. Wait for admin approval
+        
+        **Rate Limit:** 5 requests per 15 minutes
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MerchantSignupRequest'
+      responses:
+        '201':
+          description: Merchant account created successfully, OTP sent
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          userId:
+                            type: string
+                            example: 507f1f77bcf86cd799439012
+                          email:
+                            type: string
+                            example: merchant@business.com
+                          otpSent:
+                            type: boolean
+                            example: true
+                          nextStep:
+                            type: string
+                            example: verify_otp
+        '400':
+          description: Validation error or email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'

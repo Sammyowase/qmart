@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Qmart Admin Panel</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+</head>
+<body>
+    <!-- Login Modal -->
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <div class="login-container">
+                <div class="login-header">
+                    <h2>🏦 Qmart Admin Panel</h2>
+                    <p>Secure Administrator Access</p>
+                </div>
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label for="email">Email Address</label>
+                        <input type="email" id="email" name="email" required
+                               placeholder="admin@qmart.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" name="password" required
+                               placeholder="Enter your password">
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <span class="btn-text">Sign In</span>
+                        <span class="btn-loading" style="display: none;">Signing in...</span>
+                    </button>
+                </form>
+                <div id="loginError" class="error-message" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Dashboard -->
+    <div id="dashboard" style="display: none;">
+        <!-- Header -->
+        <header class="dashboard-header">
+            <div class="header-left">
+                <h1>🏦 Qmart Admin Dashboard</h1>
+                <div class="breadcrumb">
+                    <span id="currentPage">Dashboard</span>
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="notification-bell">
+                    <span class="bell-icon">🔔</span>
+                    <span id="notificationCount" class="notification-count">0</span>
+                </div>
+                <div class="admin-profile">
+                    <span id="adminName">Admin</span>
+                    <button id="logoutBtn" class="btn btn-secondary">Logout</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar">
+            <ul class="nav-menu">
+                <li class="nav-item active" data-page="dashboard">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-text">Dashboard</span>
+                </li>
+                <li class="nav-item" data-page="users">
+                    <span class="nav-icon">👥</span>
+                    <span class="nav-text">User Management</span>
+                </li>
+                <li class="nav-item" data-page="transactions">
+                    <span class="nav-icon">💳</span>
+                    <span class="nav-text">Transactions</span>
+                </li>
+                <li class="nav-item" data-page="kyc">
+                    <span class="nav-icon">🆔</span>
+                    <span class="nav-text">KYC Management</span>
+                    <span id="kycBadge" class="nav-badge">0</span>
+                </li>
+                <li class="nav-item" data-page="analytics">
+                    <span class="nav-icon">📈</span>
+                    <span class="nav-text">Analytics</span>
+                </li>
+                <li class="nav-item" data-page="security">
+                    <span class="nav-icon">🔒</span>
+                    <span class="nav-text">Security</span>
+                </li>
+                <li class="nav-item" data-page="reports">
+                    <span class="nav-icon">📄</span>
+                    <span class="nav-text">Reports</span>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Dashboard Page -->
+            <div id="dashboardPage" class="page active">
+                <!-- Stats Cards -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">👥</div>
+                        <div class="stat-content">
+                            <h3 id="totalUsers">0</h3>
+                            <p>Total Users</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">💰</div>
+                        <div class="stat-content">
+                            <h3 id="totalBalance">₦0</h3>
+                            <p>Total Balance</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">💳</div>
+                        <div class="stat-content">
+                            <h3 id="totalTransactions">0</h3>
+                            <p>Total Transactions</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🆔</div>
+                        <div class="stat-content">
+                            <h3 id="pendingKYC">0</h3>
+                            <p>Pending KYC</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Section -->
+                <div class="charts-grid">
+                    <div class="chart-container">
+                        <h3>Transaction Volume (30 Days)</h3>
+                        <canvas id="transactionChart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <h3>User Registrations (30 Days)</h3>
+                        <canvas id="registrationChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Recent Activity -->
+                <div class="activity-section">
+                    <h3>Recent Activity</h3>
+                    <div id="recentActivity" class="activity-list">
+                        <!-- Activity items will be populated here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Users Page -->
+            <div id="usersPage" class="page">
+                <div class="page-header">
+                    <h2>User Management</h2>
+                    <div class="page-actions">
+                        <select id="userRoleFilter">
+                            <option value="">All Roles</option>
+                            <option value="customer">Customers</option>
+                            <option value="merchant">Merchants</option>
+                        </select>
+                        <button class="btn btn-primary" onclick="exportUsers()">Export CSV</button>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table id="usersTable" class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Wallet Balance</th>
+                                <th>KYC Tier</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTableBody">
+                            <!-- User data will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="pagination">
+                    <button id="usersPrevBtn" class="btn btn-secondary">Previous</button>
+                    <span id="usersPageInfo">Page 1 of 1</span>
+                    <button id="usersNextBtn" class="btn btn-secondary">Next</button>
+                </div>
+            </div>
+
+            <!-- Transactions Page -->
+            <div id="transactionsPage" class="page">
+                <div class="page-header">
+                    <h2>Transaction Monitoring</h2>
+                    <div class="page-actions">
+                        <select id="transactionStatusFilter">
+                            <option value="">All Status</option>
+                            <option value="completed">Completed</option>
+                            <option value="pending">Pending</option>
+                            <option value="failed">Failed</option>
+                        </select>
+                        <select id="transactionTypeFilter">
+                            <option value="">All Types</option>
+                            <option value="transfer">Transfer</option>
+                            <option value="deposit">Deposit</option>
+                            <option value="withdrawal">Withdrawal</option>
+                        </select>
+                        <button class="btn btn-primary" onclick="exportTransactions()">Export CSV</button>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table id="transactionsTable" class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Transaction ID</th>
+                                <th>Amount</th>
+                                <th>Type</th>
+                                <th>Status</th>
+                                <th>Sender</th>
+                                <th>Receiver</th>
+                                <th>Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transactionsTableBody">
+                            <!-- Transaction data will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="pagination">
+                    <button id="transactionsPrevBtn" class="btn btn-secondary">Previous</button>
+                    <span id="transactionsPageInfo">Page 1 of 1</span>
+                    <button id="transactionsNextBtn" class="btn btn-secondary">Next</button>
+                </div>
+            </div>
+
+            <!-- KYC Management Page -->
+            <div id="kycPage" class="page">
+                <div class="page-header">
+                    <h2>KYC Management</h2>
+                    <div class="page-actions">
+                        <select id="kycStatusFilter">
+                            <option value="pending">Pending</option>
+                            <option value="under_review">Under Review</option>
+                            <option value="all">All</option>
+                        </select>
+                        <button class="btn btn-primary" onclick="exportKYC()">Export CSV</button>
+                    </div>
+                </div>
+                <div id="kycRequestsContainer">
+                    <!-- KYC requests will be populated here -->
+                </div>
+            </div>
+
+            <!-- Analytics Page -->
+            <div id="analyticsPage" class="page">
+                <div class="page-header">
+                    <h2>Analytics & Reports</h2>
+                </div>
+                <div class="analytics-grid">
+                    <div class="chart-container">
+                        <h3>Revenue Trends</h3>
+                        <canvas id="revenueChart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <h3>KYC Approval Rates</h3>
+                        <canvas id="kycChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Security Page -->
+            <div id="securityPage" class="page">
+                <div class="page-header">
+                    <h2>Security Monitoring</h2>
+                </div>
+                <div class="security-alerts">
+                    <div class="alert-section">
+                        <h3>🚨 Security Alerts</h3>
+                        <div id="securityAlerts" class="alerts-list">
+                            <!-- Security alerts will be populated here -->
+                        </div>
+                    </div>
+                    <div class="system-health">
+                        <h3>🔧 System Health</h3>
+                        <div id="systemHealth" class="health-metrics">
+                            <!-- System health metrics will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reports Page -->
+            <div id="reportsPage" class="page">
+                <div class="page-header">
+                    <h2>Reports & Export</h2>
+                </div>
+                <div class="reports-grid">
+                    <div class="report-card">
+                        <h3>📊 Financial Reports</h3>
+                        <p>Generate comprehensive financial reports</p>
+                        <button class="btn btn-primary" onclick="generateFinancialReport()">Generate Report</button>
+                    </div>
+                    <div class="report-card">
+                        <h3>👥 User Reports</h3>
+                        <p>Export user data and statistics</p>
+                        <button class="btn btn-primary" onclick="generateUserReport()">Generate Report</button>
+                    </div>
+                    <div class="report-card">
+                        <h3>🆔 KYC Reports</h3>
+                        <p>KYC compliance and approval reports</p>
+                        <button class="btn btn-primary" onclick="generateKYCReport()">Generate Report</button>
+                    </div>
+                    <div class="report-card">
+                        <h3>🔒 Security Reports</h3>
+                        <p>Security incidents and monitoring</p>
+                        <button class="btn btn-primary" onclick="generateSecurityReport()">Generate Report</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="notificationToast" class="toast">
+        <div class="toast-content">
+            <span id="toastMessage"></span>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="loading-spinner"></div>
+        <p>Loading...</p>
+    </div>
+
+    <script src="admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,1039 @@
+openapi: 3.0.3
+info:
+  title: Qmart Admin API
+  description: |
+    # Qmart Admin API Documentation
+
+    Complete API documentation for Qmart fintech platform administrative operations.
+
+    ## Features
+    - **Admin Authentication** - Secure admin login with JWT tokens
+    - **User Management** - Complete customer and merchant administration
+    - **Transaction Monitoring** - Real-time transaction oversight and management
+    - **KYC Administration** - Approve/reject KYC requests and manage verification
+    - **System Analytics** - Comprehensive dashboard statistics and reporting
+    - **Security Monitoring** - System health checks and security alerts
+    - **Wallet Management** - Freeze/unfreeze user wallets and account controls
+
+    ## Authentication
+    All admin endpoints require a valid admin JWT token in the Authorization header:
+    ```
+    Authorization: Bearer <admin_jwt_token>
+    ```
+
+    ## Admin Access
+    - **Admin Panel URL**: `/admin-panel`
+    - **Default Admin**: admin@qmart.com / QmartAdmin2024!
+    - **Session Duration**: 8 hours
+
+    ## Rate Limits
+    - **Admin Operations**: 100 requests per 15 minutes
+    - **Admin Authentication**: 5 requests per 15 minutes
+    - **Data Export**: 10 requests per hour
+
+    ## Security Features
+    - Role-based access control (admin role required)
+    - Secure session management
+    - Audit trail for all admin actions
+    - Real-time monitoring and alerts
+
+  version: 1.0.0
+  contact:
+    name: Qmart Admin Support
+    email: admin-support@qmart.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:5000
+    description: Development server
+  - url: https://api.qmart.com
+    description: Production server
+
+security:
+  - AdminBearerAuth: []
+
+components:
+  securitySchemes:
+    AdminBearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Admin JWT token obtained from admin login endpoint
+
+  schemas:
+    # Admin Authentication Schemas
+    AdminSigninRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          example: admin@qmart.com
+          description: Admin email address
+        password:
+          type: string
+          example: QmartAdmin2024!
+          description: Admin password
+
+    AdminUser:
+      type: object
+      properties:
+        id:
+          type: string
+          example: 507f1f77bcf86cd799439012
+        email:
+          type: string
+          example: admin@qmart.com
+        firstName:
+          type: string
+          example: Qmart
+        lastName:
+          type: string
+          example: Administrator
+        role:
+          type: string
+          example: admin
+
+    # Dashboard Schemas
+    DashboardStats:
+      type: object
+      properties:
+        overview:
+          type: object
+          properties:
+            totalUsers:
+              type: integer
+              example: 1250
+            totalCustomers:
+              type: integer
+              example: 1100
+            totalMerchants:
+              type: integer
+              example: 150
+            totalWallets:
+              type: integer
+              example: 1250
+            activeWallets:
+              type: integer
+              example: 1180
+            totalTransactions:
+              type: integer
+              example: 5420
+            pendingKYC:
+              type: integer
+              example: 23
+            totalBalance:
+              type: number
+              example: 15750000.50
+            formattedTotalBalance:
+              type: string
+              example: ₦15,750,000.50
+        recentActivity:
+          type: object
+          properties:
+            transactionVolume:
+              type: number
+              example: 2500000.00
+            transactionCount:
+              type: integer
+              example: 145
+            formattedVolume:
+              type: string
+              example: ₦2,500,000.00
+        charts:
+          type: object
+          properties:
+            dailyTransactions:
+              type: array
+              items:
+                type: object
+                properties:
+                  _id:
+                    type: object
+                    properties:
+                      year:
+                        type: integer
+                        example: 2024
+                      month:
+                        type: integer
+                        example: 1
+                      day:
+                        type: integer
+                        example: 15
+                  volume:
+                    type: number
+                    example: 125000.00
+                  count:
+                    type: integer
+                    example: 8
+            dailyRegistrations:
+              type: array
+              items:
+                type: object
+                properties:
+                  _id:
+                    type: object
+                    properties:
+                      year:
+                        type: integer
+                        example: 2024
+                      month:
+                        type: integer
+                        example: 1
+                      day:
+                        type: integer
+                        example: 15
+                  customers:
+                    type: integer
+                    example: 12
+                  merchants:
+                    type: integer
+                    example: 3
+                  total:
+                    type: integer
+                    example: 15
+
+    # User Management Schemas
+    AdminUserView:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: 507f1f77bcf86cd799439012
+        email:
+          type: string
+          example: customer@example.com
+        firstName:
+          type: string
+          example: John
+        lastName:
+          type: string
+          example: Doe
+        phone:
+          type: string
+          example: +2348012345678
+        role:
+          type: string
+          enum: [customer, merchant]
+          example: customer
+        isVerified:
+          type: boolean
+          example: true
+        isActive:
+          type: boolean
+          example: true
+        createdAt:
+          type: string
+          format: date-time
+        wallets:
+          type: array
+          items:
+            type: object
+            properties:
+              _id:
+                type: string
+                example: 507f1f77bcf86cd799439013
+              accountNumber:
+                type: string
+                example: 234567890
+              balance:
+                type: number
+                example: 15000.50
+              formattedBalance:
+                type: string
+                example: ₦15,000.50
+              kycTier:
+                type: integer
+                example: 2
+              status:
+                type: string
+                enum: [active, frozen, suspended]
+                example: active
+
+    # Transaction Management Schemas
+    AdminTransactionView:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: 507f1f77bcf86cd799439014
+        transactionId:
+          type: string
+          example: 550e8400-e29b-41d4-a716-446655440000
+        amount:
+          type: number
+          example: 5000.00
+        formattedAmount:
+          type: string
+          example: ₦5,000.00
+        type:
+          type: string
+          enum: [transfer, deposit, withdrawal, payment]
+          example: transfer
+        status:
+          type: string
+          enum: [pending, completed, failed, cancelled]
+          example: completed
+        senderWallet:
+          type: object
+          properties:
+            accountNumber:
+              type: string
+              example: 234567890
+            userId:
+              type: string
+              example: 507f1f77bcf86cd799439012
+        receiverWallet:
+          type: object
+          properties:
+            accountNumber:
+              type: string
+              example: 345678901
+            userId:
+              type: string
+              example: 507f1f77bcf86cd799439015
+        remark:
+          type: string
+          example: Payment for services
+        reference:
+          type: string
+          example: QMT12345678
+        createdAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+
+    # KYC Management Schemas
+    AdminKYCView:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: 507f1f77bcf86cd799439016
+        userId:
+          type: string
+          example: 507f1f77bcf86cd799439012
+        user:
+          type: object
+          properties:
+            firstName:
+              type: string
+              example: John
+            lastName:
+              type: string
+              example: Doe
+            email:
+              type: string
+              example: customer@example.com
+        tier:
+          type: integer
+          enum: [2, 3]
+          example: 2
+        status:
+          type: string
+          enum: [pending, under_review, approved, rejected]
+          example: pending
+        documents:
+          type: object
+          properties:
+            nin:
+              type: string
+              example: 12345678901
+            bvn:
+              type: string
+              example: 09876543210
+            selfieUrl:
+              type: string
+              example: https://storage.example.com/selfie.jpg
+            addressProofUrl:
+              type: string
+              example: https://storage.example.com/address.pdf
+        submittedAt:
+          type: string
+          format: date-time
+        reviewedAt:
+          type: string
+          format: date-time
+        reviewedBy:
+          type: string
+          example: 507f1f77bcf86cd799439017
+
+    KYCApprovalRequest:
+      type: object
+      required: [action]
+      properties:
+        action:
+          type: string
+          enum: [approve, reject]
+          example: approve
+        notes:
+          type: string
+          maxLength: 500
+          example: All documents verified successfully
+
+    # System Health Schemas
+    SystemHealth:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, warning, critical]
+          example: healthy
+        metrics:
+          type: object
+          properties:
+            recentTransactions:
+              type: integer
+              example: 45
+            failedTransactions:
+              type: integer
+              example: 2
+            successRate:
+              type: number
+              example: 95.56
+            activeUsers:
+              type: integer
+              example: 120
+            systemErrors:
+              type: integer
+              example: 0
+        timestamp:
+          type: string
+          format: date-time
+
+    # Response Schemas
+    AdminSuccessResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        message:
+          type: string
+          example: Operation completed successfully
+        data:
+          type: object
+          description: Response data (varies by endpoint)
+
+    AdminErrorResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: error
+        message:
+          type: string
+          example: Access denied or operation failed
+
+paths:
+  # Admin Authentication
+  /api/admin/signin:
+    post:
+      tags: [Admin Authentication]
+      summary: Admin login
+      description: |
+        Authenticate admin user and receive JWT token for admin operations.
+
+        **Rate Limit:** 5 requests per 15 minutes
+        **Session Duration:** 8 hours
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminSigninRequest'
+      responses:
+        '200':
+          description: Admin login successful
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/AdminSuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          token:
+                            type: string
+                            example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                          admin:
+                            $ref: '#/components/schemas/AdminUser'
+        '401':
+          description: Invalid admin credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminErrorResponse'
+
+  # Dashboard & Analytics
+  /api/admin/dashboard-stats:
+    get:
+      tags: [Dashboard & Analytics]
+      summary: Get dashboard statistics
+      description: |
+        Retrieve comprehensive dashboard statistics including user counts,
+        transaction volumes, and chart data.
+
+        **Rate Limit:** 100 requests per 15 minutes
+        **Authentication:** Admin required
+      responses:
+        '200':
+          description: Dashboard statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/AdminSuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/DashboardStats'
+
+  # User Management
+  /api/admin/users:
+    get:
+      tags: [User Management]
+      summary: Get all users with pagination
+      description: |
+        Retrieve paginated list of all users (customers and merchants) with
+        wallet information and filtering options.
+
+        **Rate Limit:** 100 requests per 15 minutes
+        **Authentication:** Admin required
+      parameters:
+        - name: limit
+          in: query
+          description: Number of users per page (max 100)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          description: Number of users to skip
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: role
+          in: query
+          description: Filter by user role
+          schema:
+            type: string
+            enum: [customer, merchant]
+      responses:
+        '200':
+          description: Users retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/AdminSuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          users:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/AdminUserView'
+                          pagination:
+                            type: object
+                            properties:
+                              total:
+                                type: integer
+                                example: 1250
+                              limit:
+                                type: integer
+                                example: 20
+                              offset:
+                                type: integer
+                                example: 0
+                              hasMore:
+                                type: boolean
+                                example: true
+
+  # Transaction Management
+  /api/admin/transactions:
+    get:
+      tags: [Transaction Management]
+      summary: Get all transactions with filtering
+      description: |
+        Retrieve paginated list of all transactions with filtering and
+        detailed information including sender/receiver details.
+
+        **Rate Limit:** 100 requests per 15 minutes
+        **Authentication:** Admin required
+      parameters:
+        - name: limit
+          in: query
+          description: Number of transactions per page (max 100)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          description: Number of transactions to skip
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: status
+          in: query
+          description: Filter by transaction status
+          schema:
+            type: string
+            enum: [pending, completed, failed, cancelled]
+        - name: type
+          in: query
+          description: Filter by transaction type
+          schema:
+            type: string
+            enum: [transfer, deposit, withdrawal, payment]
+        - name: startDate
+          in: query
+          description: Start date for filtering (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+        - name: endDate
+          in: query
+          description: End date for filtering (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Transactions retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/AdminSuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          transactions:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/AdminTransactionView'
+                          pagination:
+                            type: object
+                            properties:
+                              total:
+                                type: integer
+                                example: 5420
+                              limit:
+                                type: integer
+                                example: 20
+                              offset:
+                                type: integer
+                                example: 0
+                              hasMore:
+                                type: boolean
+                                example: true
+
+  # Wallet Management
+  /api/admin/wallet/{userId}/toggle-status:
+    post:
+      tags: [Wallet Management]
+      summary: Freeze/unfreeze user wallet
+      description: |
+        Change wallet status to freeze, unfreeze, or suspend user accounts.
+        This is a critical admin operation that affects user access to funds.
+
+        **Rate Limit:** 100 requests per 15 minutes
+        **Authentication:** Admin required
+        **Audit:** All actions are logged
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: User ID whose wallet to modify
+          schema:
+            type: string
+            example: 507f1f77bcf86cd799439012
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [active, frozen, suspended]
+                  example: frozen
+                  description: New wallet status
+                reason:
+                  type: string
+                  maxLength: 500
+                  example: Suspicious activity detected
+                  description: Reason for status change
+      responses:
+        '200':
+          description: Wallet status updated successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/AdminSuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          walletId:
+                            type: string
+                            example: 507f1f77bcf86cd799439013
+                          status:
+                            type: string
+                            example: frozen
+                          updatedAt:
+                            type: string
+                            format: date-time
+
+  # KYC Administration
+  /api/kyc/admin/pending:
+    get:
+      tags: [KYC Administration]
+      summary: Get pending KYC requests
+      description: |
+        Retrieve all pending KYC verification requests for admin review.
+
+        **Rate Limit:** 100 requests per 15 minutes
+        **Authentication:** Admin required
+      parameters:
+        - name: limit
+          in: query
+          description: Number of requests per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+        - name: offset
+          in: query
+          description: Number of requests to skip
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: tier
+          in: query
+          description: Filter by requested tier
+          schema:
+            type: integer
+            enum: [2, 3]
+      responses:
+        '200':
+          description: Pending KYC requests retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/AdminSuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          requests:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/AdminKYCView'
+                          pagination:
+                            type: object
+                            properties:
+                              total:
+                                type: integer
+                                example: 23
+                              limit:
+                                type: integer
+                                example: 20
+                              offset:
+                                type: integer
+                                example: 0
+                              hasMore:
+                                type: boolean
+                                example: true
+
+  /api/kyc/admin/{kycId}/review:
+    post:
+      tags: [KYC Administration]
+      summary: Approve or reject KYC request
+      description: |
+        Review and approve or reject a KYC verification request.
+        This action updates the user's KYC tier and daily limits.
+
+        **Rate Limit:** 100 requests per 15 minutes
+        **Authentication:** Admin required
+        **Audit:** All decisions are logged with admin details
+      parameters:
+        - name: kycId
+          in: path
+          required: true
+          description: KYC request ID to review
+          schema:
+            type: string
+            example: 507f1f77bcf86cd799439016
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KYCApprovalRequest'
+      responses:
+        '200':
+          description: KYC request reviewed successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/AdminSuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          kycId:
+                            type: string
+                            example: 507f1f77bcf86cd799439016
+                          status:
+                            type: string
+                            example: approved
+                          newTier:
+                            type: integer
+                            example: 2
+                          newDailyLimit:
+                            type: number
+                            example: 500000
+                          reviewedAt:
+                            type: string
+                            format: date-time
+                          reviewedBy:
+                            type: string
+                            example: admin@qmart.com
+
+  # System Health & Security
+  /api/admin/system-health:
+    get:
+      tags: [System Health & Security]
+      summary: Get system health metrics
+      description: |
+        Retrieve comprehensive system health metrics including transaction
+        success rates, active users, and system errors.
+
+        **Rate Limit:** 100 requests per 15 minutes
+        **Authentication:** Admin required
+      responses:
+        '200':
+          description: System health metrics retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/AdminSuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/SystemHealth'
+
+  /api/admin/security-alerts:
+    get:
+      tags: [System Health & Security]
+      summary: Get security alerts
+      description: |
+        Retrieve recent security alerts including failed transactions
+        and large transaction notifications.
+
+        **Rate Limit:** 100 requests per 15 minutes
+        **Authentication:** Admin required
+      responses:
+        '200':
+          description: Security alerts retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/AdminSuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          failedTransactions:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/AdminTransactionView'
+                          largeTransactions:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/AdminTransactionView'
+                          timestamp:
+                            type: string
+                            format: date-time
+
+  # Data Export & Reports
+  /api/admin/export/{type}:
+    post:
+      tags: [Data Export & Reports]
+      summary: Export data as CSV
+      description: |
+        Export various types of data as CSV files for analysis and reporting.
+
+        **Rate Limit:** 10 requests per hour
+        **Authentication:** Admin required
+        **File Expiry:** Download links expire after 1 hour
+      parameters:
+        - name: type
+          in: path
+          required: true
+          description: Type of data to export
+          schema:
+            type: string
+            enum: [users, transactions, kyc, financial]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                startDate:
+                  type: string
+                  format: date-time
+                  description: Start date for data export
+                endDate:
+                  type: string
+                  format: date-time
+                  description: End date for data export
+                filters:
+                  type: object
+                  description: Additional filters for export
+                  properties:
+                    status:
+                      type: string
+                      description: Filter by status (varies by type)
+                    role:
+                      type: string
+                      enum: [customer, merchant]
+                      description: Filter by user role (users export only)
+      responses:
+        '200':
+          description: Export initiated successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/AdminSuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          downloadUrl:
+                            type: string
+                            example: /api/admin/download/users-export-1642345678.csv
+                          expiresAt:
+                            type: string
+                            format: date-time
+                            description: Download link expiry time
+                          estimatedSize:
+                            type: string
+                            example: 2.5 MB
+                          recordCount:
+                            type: integer
+                            example: 1250
+
+  /api/admin/reports/generate:
+    post:
+      tags: [Data Export & Reports]
+      summary: Generate comprehensive reports
+      description: |
+        Generate detailed reports for various aspects of the system including
+        financial summaries, user analytics, and compliance reports.
+
+        **Rate Limit:** 5 requests per hour
+        **Authentication:** Admin required
+        **Processing Time:** Reports may take several minutes to generate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reportType, dateRange, format]
+              properties:
+                reportType:
+                  type: string
+                  enum: [financial, users, kyc, security, transactions]
+                  example: financial
+                  description: Type of report to generate
+                dateRange:
+                  type: object
+                  required: [startDate, endDate]
+                  properties:
+                    startDate:
+                      type: string
+                      format: date-time
+                      example: 2024-01-01T00:00:00Z
+                    endDate:
+                      type: string
+                      format: date-time
+                      example: 2024-01-31T23:59:59Z
+                format:
+                  type: string
+                  enum: [pdf, excel, csv]
+                  example: pdf
+                  description: Output format for the report
+                includeCharts:
+                  type: boolean
+                  default: true
+                  description: Include charts and visualizations
+                detailLevel:
+                  type: string
+                  enum: [summary, detailed, comprehensive]
+                  default: detailed
+                  description: Level of detail in the report
+      responses:
+        '202':
+          description: Report generation started
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/AdminSuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          reportId:
+                            type: string
+                            example: report-1642345678
+                          estimatedCompletion:
+                            type: string
+                            format: date-time
+                            description: Estimated completion time
+                          downloadUrl:
+                            type: string
+                            example: /api/admin/download/report-1642345678.pdf
+                          status:
+                            type: string
+                            example: processing

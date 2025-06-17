@@ -1,0 +1,937 @@
+openapi: 3.0.3
+info:
+  title: Qmart Customer API
+  description: |
+    # Qmart Customer API Documentation
+
+    Complete API documentation for Qmart fintech platform customer operations.
+
+    ## Features
+    - **Secure Authentication** - JWT-based authentication with OTP verification
+    - **Digital Wallet** - Complete wallet management with transfers and QR codes
+    - **KYC System** - 3-tier verification system with daily limits
+    - **Transaction History** - Complete audit trail of all operations
+    - **Security** - Rate limiting, input validation, and comprehensive error handling
+
+    ## Authentication
+    All protected endpoints require a valid JWT token in the Authorization header:
+    ```
+    Authorization: Bearer <your_jwt_token>
+    ```
+
+    ## Rate Limits
+    - **Authentication**: 5 requests per 15 minutes
+    - **Transfers**: 10 requests per minute
+    - **General API**: 100 requests per 15 minutes
+    - **KYC Submissions**: 3 requests per hour
+
+    ## KYC Tier System
+    - **Tier 1** (Default): ₦50,000 daily limit
+    - **Tier 2** (NIN + BVN): ₦500,000 daily limit
+    - **Tier 3** (Full verification): ₦5,000,000 daily limit
+
+  version: 1.0.0
+  contact:
+    name: Qmart API Support
+    email: support@qmart.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:5000
+    description: Development server
+  - url: https://api.qmart.com
+    description: Production server
+
+security:
+  - BearerAuth: []
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from login endpoint
+
+  schemas:
+    # Authentication Schemas
+    CustomerSignupRequest:
+      type: object
+      required: [email, password, firstName, lastName, phone]
+      properties:
+        email:
+          type: string
+          format: email
+          example: customer@example.com
+          description: Valid email address for account creation
+        password:
+          type: string
+          minLength: 8
+          example: SecurePass123!
+          description: Strong password (min 8 characters)
+        firstName:
+          type: string
+          minLength: 2
+          example: John
+          description: Customer's first name
+        lastName:
+          type: string
+          minLength: 2
+          example: Doe
+          description: Customer's last name
+        phone:
+          type: string
+          pattern: '^\\+?[1-9]\\d{1,14}$'
+          example: +2348012345678
+          description: Valid phone number with country code
+
+    CustomerSigninRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          example: customer@example.com
+        password:
+          type: string
+          example: SecurePass123!
+
+    OTPVerificationRequest:
+      type: object
+      required: [email, otp]
+      properties:
+        email:
+          type: string
+          format: email
+          example: customer@example.com
+        otp:
+          type: string
+          pattern: '^[0-9]{6}$'
+          example: 123456
+          description: 6-digit OTP code
+
+    # Wallet Schemas
+    WalletDetails:
+      type: object
+      properties:
+        accountNumber:
+          type: string
+          pattern: '^[0-9]{9}$'
+          example: 234567890
+          description: 9-digit unique account number
+        balance:
+          type: number
+          format: decimal
+          example: 15000.50
+          description: Current wallet balance in Naira
+        formattedBalance:
+          type: string
+          example: ₦15,000.50
+          description: Formatted balance with currency symbol
+        kycTier:
+          type: integer
+          enum: [1, 2, 3]
+          example: 2
+          description: Current KYC verification tier
+        dailyLimit:
+          type: number
+          example: 500000
+          description: Daily transaction limit in Naira
+        formattedDailyLimit:
+          type: string
+          example: ₦500,000
+          description: Formatted daily limit
+        status:
+          type: string
+          enum: [active, frozen, suspended]
+          example: active
+          description: Current wallet status
+        hasPIN:
+          type: boolean
+          example: true
+          description: Whether withdrawal PIN is set
+        createdAt:
+          type: string
+          format: date-time
+          example: 2024-01-15T10:30:00Z
+
+    TransferRequest:
+      type: object
+      required: [recipientIdentifier, amount, method]
+      properties:
+        recipientIdentifier:
+          type: string
+          example: 234567890
+          description: 9-digit account number or QR code data
+        amount:
+          type: number
+          format: decimal
+          minimum: 0.01
+          maximum: 10000000
+          example: 5000.00
+          description: Transfer amount (max 2 decimal places)
+        method:
+          type: string
+          enum: [account_number, qr_code]
+          example: account_number
+          description: Transfer method
+        remark:
+          type: string
+          maxLength: 500
+          example: Payment for services
+          description: Optional transaction note
+        pin:
+          type: string
+          pattern: '^[0-9]{4}$'
+          example: 1234
+          description: 4-digit withdrawal PIN (if set)
+
+    Transaction:
+      type: object
+      properties:
+        transactionId:
+          type: string
+          example: 550e8400-e29b-41d4-a716-446655440000
+          description: Unique transaction identifier
+        amount:
+          type: number
+          example: 5000.00
+        formattedAmount:
+          type: string
+          example: ₦5,000.00
+        type:
+          type: string
+          enum: [transfer, deposit, withdrawal, payment]
+          example: transfer
+        method:
+          type: string
+          enum: [account_number, qr_code]
+          example: account_number
+        status:
+          type: string
+          enum: [pending, completed, failed, cancelled]
+          example: completed
+        remark:
+          type: string
+          example: Payment for services
+        reference:
+          type: string
+          example: QMT12345678
+          description: Short transaction reference
+        createdAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+
+    # KYC Schemas
+    KYCSubmissionRequest:
+      type: object
+      required: [tier, documents]
+      properties:
+        tier:
+          type: integer
+          enum: [2, 3]
+          example: 2
+          description: Requested KYC tier (2 or 3)
+        documents:
+          type: object
+          properties:
+            nin:
+              type: string
+              pattern: '^[0-9]{11}$'
+              example: 12345678901
+              description: 11-digit National Identification Number
+            bvn:
+              type: string
+              pattern: '^[0-9]{11}$'
+              example: 09876543210
+              description: 11-digit Bank Verification Number
+            selfieUrl:
+              type: string
+              format: uri
+              example: https://storage.example.com/selfie.jpg
+              description: URL to uploaded selfie image
+            addressProofUrl:
+              type: string
+              format: uri
+              example: https://storage.example.com/address.pdf
+              description: URL to address verification document
+
+    # Response Schemas
+    SuccessResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        message:
+          type: string
+          example: Operation completed successfully
+        data:
+          type: object
+          description: Response data (varies by endpoint)
+
+    ErrorResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: error
+        message:
+          type: string
+          example: Validation failed
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+                example: email
+              message:
+                type: string
+                example: Invalid email format
+              code:
+                type: string
+                example: invalid_format
+
+    RateLimitResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: error
+        message:
+          type: string
+          example: Too many requests. Please try again later.
+        retryAfter:
+          type: integer
+          example: 60
+          description: Seconds to wait before retrying
+
+paths:
+  # Authentication Endpoints
+  /api/auth/customer/signup:
+    post:
+      tags: [Customer Authentication]
+      summary: Register new customer account
+      description: |
+        Create a new customer account with email verification.
+
+        **Process:**
+        1. Submit registration details
+        2. Receive OTP via email
+        3. Verify OTP using `/api/auth/verify-otp`
+        4. Account becomes active and wallet is created
+
+        **Rate Limit:** 5 requests per 15 minutes
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerSignupRequest'
+      responses:
+        '201':
+          description: Account created successfully, OTP sent
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          userId:
+                            type: string
+                            example: 507f1f77bcf86cd799439012
+                          email:
+                            type: string
+                            example: customer@example.com
+                          otpSent:
+                            type: boolean
+                            example: true
+        '400':
+          description: Validation error or email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RateLimitResponse'
+
+  /api/auth/customer/signin:
+    post:
+      tags: [Customer Authentication]
+      summary: Customer login
+      description: |
+        Authenticate customer and receive JWT token.
+
+        **Rate Limit:** 5 requests per 15 minutes
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerSigninRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          token:
+                            type: string
+                            example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                          user:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                                example: 507f1f77bcf86cd799439012
+                              email:
+                                type: string
+                                example: customer@example.com
+                              firstName:
+                                type: string
+                                example: John
+                              lastName:
+                                type: string
+                                example: Doe
+                              role:
+                                type: string
+                                example: customer
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RateLimitResponse'
+
+  /api/auth/verify-otp:
+    post:
+      tags: [Customer Authentication]
+      summary: Verify OTP code
+      description: |
+        Verify OTP code sent during registration or password reset.
+
+        **Rate Limit:** 5 requests per 15 minutes
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OTPVerificationRequest'
+      responses:
+        '200':
+          description: OTP verified successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          verified:
+                            type: boolean
+                            example: true
+                          accountActivated:
+                            type: boolean
+                            example: true
+        '400':
+          description: Invalid or expired OTP
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # Wallet Endpoints
+  /api/wallet/balance:
+    get:
+      tags: [Wallet Operations]
+      summary: Get wallet balance
+      description: |
+        Retrieve current wallet balance and account details.
+
+        **Rate Limit:** 50 requests per minute
+        **Authentication:** Required
+      responses:
+        '200':
+          description: Wallet balance retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/WalletDetails'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/wallet/transfer:
+    post:
+      tags: [Wallet Operations]
+      summary: Transfer funds
+      description: |
+        Transfer money to another Qmart wallet using account number or QR code.
+
+        **Rate Limit:** 10 requests per minute
+        **Authentication:** Required
+        **PIN Required:** If withdrawal PIN is set
+
+        **Daily Limits:**
+        - Tier 1: ₦50,000
+        - Tier 2: ₦500,000
+        - Tier 3: ₦5,000,000
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransferRequest'
+            examples:
+              account_transfer:
+                summary: Transfer using account number
+                value:
+                  recipientIdentifier: "234567890"
+                  amount: 5000.00
+                  method: "account_number"
+                  remark: "Payment for services"
+                  pin: "1234"
+              qr_transfer:
+                summary: Transfer using QR code
+                value:
+                  recipientIdentifier: "qr_data_string"
+                  amount: 1500.50
+                  method: "qr_code"
+                  remark: "Quick payment"
+      responses:
+        '200':
+          description: Transfer completed successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          transaction:
+                            $ref: '#/components/schemas/Transaction'
+                          newBalance:
+                            type: number
+                            example: 10000.00
+                          formattedNewBalance:
+                            type: string
+                            example: ₦10,000.00
+        '400':
+          description: Validation error or insufficient funds
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RateLimitResponse'
+
+  /api/wallet/transactions:
+    get:
+      tags: [Wallet Operations]
+      summary: Get transaction history
+      description: |
+        Retrieve paginated transaction history with filtering options.
+
+        **Rate Limit:** 50 requests per minute
+        **Authentication:** Required
+      parameters:
+        - name: limit
+          in: query
+          description: Number of transactions per page (max 100)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          description: Number of transactions to skip
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: type
+          in: query
+          description: Filter by transaction type
+          schema:
+            type: string
+            enum: [transfer, deposit, withdrawal, payment]
+        - name: status
+          in: query
+          description: Filter by transaction status
+          schema:
+            type: string
+            enum: [pending, completed, failed, cancelled]
+        - name: startDate
+          in: query
+          description: Start date for filtering (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+        - name: endDate
+          in: query
+          description: End date for filtering (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Transaction history retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          transactions:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Transaction'
+                          pagination:
+                            type: object
+                            properties:
+                              total:
+                                type: integer
+                                example: 150
+                              limit:
+                                type: integer
+                                example: 20
+                              offset:
+                                type: integer
+                                example: 0
+                              hasMore:
+                                type: boolean
+                                example: true
+
+  /api/wallet/pin/set:
+    post:
+      tags: [Wallet Operations]
+      summary: Set withdrawal PIN
+      description: |
+        Set a 4-digit PIN for wallet withdrawals and transfers.
+
+        **Rate Limit:** 5 requests per 15 minutes
+        **Authentication:** Required
+        **OTP Required:** Yes (sent to registered email)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [pin, otp]
+              properties:
+                pin:
+                  type: string
+                  pattern: '^[0-9]{4}$'
+                  example: 1234
+                  description: 4-digit PIN for withdrawals
+                otp:
+                  type: string
+                  pattern: '^[0-9]{6}$'
+                  example: 123456
+                  description: OTP sent to email
+      responses:
+        '200':
+          description: PIN set successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          pinSet:
+                            type: boolean
+                            example: true
+                          message:
+                            type: string
+                            example: Withdrawal PIN set successfully
+
+  /api/wallet/pin/verify:
+    post:
+      tags: [Wallet Operations]
+      summary: Verify withdrawal PIN
+      description: |
+        Verify PIN for secure operations.
+
+        **Rate Limit:** 10 requests per minute
+        **Authentication:** Required
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [pin]
+              properties:
+                pin:
+                  type: string
+                  pattern: '^[0-9]{4}$'
+                  example: 1234
+      responses:
+        '200':
+          description: PIN verified successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          verified:
+                            type: boolean
+                            example: true
+
+  /api/wallet/qr-code:
+    get:
+      tags: [Wallet Operations]
+      summary: Generate QR code for payments
+      description: |
+        Generate QR code for receiving payments.
+
+        **Rate Limit:** 20 requests per minute
+        **Authentication:** Required
+      parameters:
+        - name: amount
+          in: query
+          description: Fixed amount for QR code (optional)
+          schema:
+            type: number
+            minimum: 0.01
+            example: 5000.00
+      responses:
+        '200':
+          description: QR code generated successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          qrCode:
+                            type: string
+                            example: data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...
+                          qrData:
+                            type: string
+                            example: qmart://pay?account=234567890&amount=5000
+                          expiresAt:
+                            type: string
+                            format: date-time
+
+  # KYC Endpoints
+  /api/kyc/submit:
+    post:
+      tags: [KYC Management]
+      summary: Submit KYC documents
+      description: |
+        Submit KYC documents for tier upgrade.
+
+        **Rate Limit:** 3 requests per hour
+        **Authentication:** Required
+
+        **Tier Requirements:**
+        - **Tier 2**: NIN + BVN
+        - **Tier 3**: NIN + BVN + Selfie + Address Proof
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KYCSubmissionRequest'
+      responses:
+        '201':
+          description: KYC submission successful
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          kycId:
+                            type: string
+                            example: 507f1f77bcf86cd799439012
+                          status:
+                            type: string
+                            example: pending
+                          tier:
+                            type: integer
+                            example: 2
+                          submittedAt:
+                            type: string
+                            format: date-time
+
+  /api/kyc/status:
+    get:
+      tags: [KYC Management]
+      summary: Get KYC status
+      description: |
+        Get current KYC verification status and tier information.
+
+        **Rate Limit:** 50 requests per minute
+        **Authentication:** Required
+      responses:
+        '200':
+          description: KYC status retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          currentTier:
+                            type: integer
+                            example: 2
+                          status:
+                            type: string
+                            enum: [pending, under_review, approved, rejected]
+                            example: approved
+                          dailyLimit:
+                            type: number
+                            example: 500000
+                          formattedDailyLimit:
+                            type: string
+                            example: ₦500,000
+                          nextTier:
+                            type: object
+                            properties:
+                              tier:
+                                type: integer
+                                example: 3
+                              dailyLimit:
+                                type: number
+                                example: 5000000
+                              requirements:
+                                type: array
+                                items:
+                                  type: string
+                                example: [NIN, BVN, Selfie, Address Proof]
+
+  /api/kyc/requirements/{tier}:
+    get:
+      tags: [KYC Management]
+      summary: Get KYC tier requirements
+      description: |
+        Get requirements for specific KYC tier.
+
+        **Rate Limit:** 50 requests per minute
+        **Authentication:** Required
+      parameters:
+        - name: tier
+          in: path
+          required: true
+          description: KYC tier (2 or 3)
+          schema:
+            type: integer
+            enum: [2, 3]
+      responses:
+        '200':
+          description: KYC requirements retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          tier:
+                            type: integer
+                            example: 2
+                          dailyLimit:
+                            type: number
+                            example: 500000
+                          formattedDailyLimit:
+                            type: string
+                            example: ₦500,000
+                          requirements:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                field:
+                                  type: string
+                                  example: nin
+                                label:
+                                  type: string
+                                  example: National Identification Number
+                                required:
+                                  type: boolean
+                                  example: true
+                                format:
+                                  type: string
+                                  example: 11 digits

@@ -43,7 +43,35 @@ export const otpGenerated = new client.Counter({
 export const walletOperations = new client.Counter({
   name: 'qmart_api_wallet_operations_total',
   help: 'Total wallet operations',
-  labelNames: ['operation', 'user_type'], // operation: create/update, user_type: customer/merchant
+  labelNames: ['operation', 'user_type', 'status'], // operation: create/transfer/credit/debit, user_type: customer/merchant, status: success/failure
+});
+
+export const transactionAmount = new client.Histogram({
+  name: 'qmart_api_transaction_amount_naira',
+  help: 'Transaction amounts in Naira',
+  labelNames: ['type', 'method'], // type: transfer/deposit/withdrawal, method: account_number/qr_code
+  buckets: [10, 50, 100, 500, 1000, 5000, 10000, 50000, 100000, 500000, 1000000, 5000000]
+});
+
+export const kycRequests = new client.Counter({
+  name: 'qmart_api_kyc_requests_total',
+  help: 'Total number of KYC requests',
+  labelNames: ['tier', 'status'] // tier: 2/3, status: pending/approved/rejected
+});
+
+export const walletBalance = new client.Gauge({
+  name: 'qmart_api_total_wallet_balance_naira',
+  help: 'Total wallet balance across all users in Naira'
+});
+
+export const dailyTransactionVolume = new client.Gauge({
+  name: 'qmart_api_daily_transaction_volume_naira',
+  help: 'Daily transaction volume in Naira'
+});
+
+export const activeWallets = new client.Gauge({
+  name: 'qmart_api_active_wallets_total',
+  help: 'Total number of active wallets'
 });
 
 export const databaseOperations = new client.Histogram({
@@ -84,6 +112,11 @@ register.registerMetric(activeConnections);
 register.registerMetric(authenticationAttempts);
 register.registerMetric(otpGenerated);
 register.registerMetric(walletOperations);
+register.registerMetric(transactionAmount);
+register.registerMetric(kycRequests);
+register.registerMetric(walletBalance);
+register.registerMetric(dailyTransactionVolume);
+register.registerMetric(activeWallets);
 register.registerMetric(databaseOperations);
 register.registerMetric(rateLimitHits);
 register.registerMetric(emailsSent);

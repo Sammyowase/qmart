@@ -1,5 +1,5 @@
 import mongoose, { Document, Schema } from 'mongoose';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 
 export interface IUser extends Document {
   _id: string;
@@ -8,7 +8,7 @@ export interface IUser extends Document {
   firstName: string;
   lastName: string;
   phone: string;
-  role: 'customer' | 'merchant';
+  role: 'customer' | 'merchant' | 'admin';
   isVerified: boolean;
   isActive: boolean;
   createdAt: Date;
@@ -46,7 +46,7 @@ const userSchema = new Schema<IUser>({
   },
   role: {
     type: String,
-    enum: ['customer', 'merchant'],
+    enum: ['customer', 'merchant', 'admin'],
     required: true,
   },
   isVerified: {
@@ -64,7 +64,7 @@ const userSchema = new Schema<IUser>({
 // Hash password before saving
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
-  
+
   const saltRounds = parseInt(process.env.BCRYPT_ROUNDS || '12');
   this.password = await bcrypt.hash(this.password, saltRounds);
   next();

@@ -1,18 +1,16 @@
-import QRCode from 'qrcode';
 import { User } from './customer.model';
-import { Wallet } from '../../wallet/customer/model';
 import { OTP } from '../../models/otp.model';
-import { generateAccountNumber } from '../../utils/accountNumber';
 import { generateOTP, getOTPExpiration } from '../../utils/otp';
 import { sendOTPEmail } from '../../config/email';
 import { CustomerSignupInput } from '../../schemas/auth.schemas';
+import { createWallet } from '../../services/wallet.service';
 
 export const createCustomer = async (userData: CustomerSignupInput) => {
   // Check if user already exists
-  const existingUser = await User.findOne({ 
-    $or: [{ email: userData.email }, { phone: userData.phone }] 
+  const existingUser = await User.findOne({
+    $or: [{ email: userData.email }, { phone: userData.phone }]
   });
-  
+
   if (existingUser) {
     throw new Error('User with this email or phone already exists');
   }
@@ -25,24 +23,8 @@ export const createCustomer = async (userData: CustomerSignupInput) => {
 
   await user.save();
 
-  // Generate account number and QR code
-  const accountNumber = await generateAccountNumber();
-  const qrCodeData = JSON.stringify({
-    accountNumber,
-    userId: user._id,
-    type: 'wallet',
-  });
-  
-  const qrCode = await QRCode.toDataURL(qrCodeData);
-
-  // Create wallet
-  const wallet = new Wallet({
-    userId: user._id,
-    accountNumber,
-    qrCode,
-  });
-
-  await wallet.save();
+  // Create wallet using the wallet service
+  const wallet = await createWallet(user._id.toString());
 
   // Generate and send OTP
   const otp = generateOTP();
@@ -58,11 +40,11 @@ export const createCustomer = async (userData: CustomerSignupInput) => {
   await otpRecord.save();
 
   console.log(`Otp for ${user.email}: ${otp}`);
-  
+
   await sendOTPEmail(user.email, otp, 'verification');
-  
-  
-  
+
+
+
 
   return {
     user: {
@@ -75,6 +57,10 @@ export const createCustomer = async (userData: CustomerSignupInput) => {
     wallet: {
       accountNumber: wallet.accountNumber,
       balance: wallet.balance,
+      formattedBalance: `₦${wallet.balance.toFixed(2)}`,
+      kycTier: wallet.kycTier,
+      dailyLimit: wallet.dailyLimit,
+      status: wallet.status
     },
   };
 };
