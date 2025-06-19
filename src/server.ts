@@ -25,6 +25,9 @@ import walletRoutes from './routes/wallet.routes';
 import kycRoutes from './routes/kyc.routes';
 import adminRoutes from './routes/admin.routes';
 import documentationRoutes from './routes/documentation.routes';
+import customerDocsRouter from './routes/docs/customer.docs.routes';
+import adminDocsRouter from './routes/docs/admin.docs.routes';
+import merchantDocsRouter from './routes/docs/merchant.docs.routes';
 import { createDefaultAdmin } from './services/admin.service';
 
 dotenv.config();
@@ -116,6 +119,15 @@ app.get('/metrics', async (req, res) => {
 
 // Documentation routes (new comprehensive docs)
 app.use('/', documentationRoutes);
+
+// Mount customer Swagger docs independently
+app.use('/docs-customers', customerDocsRouter);
+
+// Mount admin Swagger docs independently
+app.use('/docs-admin', adminDocsRouter);
+
+// Mount merchant Swagger docs independently
+app.use('/docs-merchants', merchantDocsRouter);
 
 // Health check with Prometheus metrics
 app.get('/health', (req, res) => {
