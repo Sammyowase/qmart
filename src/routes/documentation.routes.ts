@@ -5,7 +5,7 @@ import path from 'path';
 
 const router = express.Router();
 
-// Load Swagger documentation files
+
 const loadSwaggerDoc = (filename: string) => {
   try {
     return YAML.load(path.join(__dirname, '../../swagger', filename));
@@ -49,10 +49,10 @@ const swaggerOptions = {
 };
 
 /**
- * GET /api/docs/customers
- * Serve customer API documentation
+ * Customer API Documentation
+ * Create a completely isolated setup for customer docs
  */
-router.get('/api/docs/customers', (req: Request, res: Response): void => {
+router.use('/api/docs/customers', (req: Request, res: Response, next: NextFunction): void => {
   if (!customerApiDoc) {
     res.status(500).json({
       status: 'error',
@@ -61,22 +61,21 @@ router.get('/api/docs/customers', (req: Request, res: Response): void => {
     });
     return;
   }
-
-  // Generate Swagger UI HTML for customer API
-  const swaggerUiAssetPath = swaggerUi.getAbsoluteFSPath();
-  const swaggerUiIndexTemplate = swaggerUi.generateHTML(customerApiDoc, {
-    ...swaggerOptions,
-    customSiteTitle: 'Qmart Customer API Documentation',
-  });
-
-  res.send(swaggerUiIndexTemplate);
+  next();
 });
 
+// Apply Swagger UI middleware specifically for customer docs
+router.use('/api/docs/customers', ...swaggerUi.serve);
+router.get('/api/docs/customers', swaggerUi.setup(customerApiDoc, {
+  ...swaggerOptions,
+  customSiteTitle: 'Qmart Customer API Documentation',
+}));
+
 /**
- * GET /api/docs/merchants
- * Serve merchant API documentation
+ * Merchant API Documentation
+ * Create a completely isolated setup for merchant docs
  */
-router.get('/api/docs/merchants', (req: Request, res: Response): void => {
+router.use('/api/docs/merchants', (req: Request, res: Response, next: NextFunction): void => {
   if (!merchantApiDoc) {
     res.status(500).json({
       status: 'error',
@@ -85,21 +84,21 @@ router.get('/api/docs/merchants', (req: Request, res: Response): void => {
     });
     return;
   }
-
-  // Generate Swagger UI HTML for merchant API
-  const swaggerUiIndexTemplate = swaggerUi.generateHTML(merchantApiDoc, {
-    ...swaggerOptions,
-    customSiteTitle: 'Qmart Merchant API Documentation',
-  });
-
-  res.send(swaggerUiIndexTemplate);
+  next();
 });
 
+// Apply Swagger UI middleware specifically for merchant docs
+router.use('/api/docs/merchants', ...swaggerUi.serve);
+router.get('/api/docs/merchants', swaggerUi.setup(merchantApiDoc, {
+  ...swaggerOptions,
+  customSiteTitle: 'Qmart Merchant API Documentation',
+}));
+
 /**
- * GET /api/docs/admin
- * Serve admin API documentation
+ * Admin API Documentation
+ * Create a completely isolated setup for admin docs
  */
-router.get('/api/docs/admin', (req: Request, res: Response): void => {
+router.use('/api/docs/admin', (req: Request, res: Response, next: NextFunction): void => {
   if (!adminApiDoc) {
     res.status(500).json({
       status: 'error',
@@ -108,15 +107,15 @@ router.get('/api/docs/admin', (req: Request, res: Response): void => {
     });
     return;
   }
-
-  // Generate Swagger UI HTML for admin API
-  const swaggerUiIndexTemplate = swaggerUi.generateHTML(adminApiDoc, {
-    ...swaggerOptions,
-    customSiteTitle: 'Qmart Admin API Documentation',
-  });
-
-  res.send(swaggerUiIndexTemplate);
+  next();
 });
+
+// Apply Swagger UI middleware specifically for admin docs
+router.use('/api/docs/admin', ...swaggerUi.serve);
+router.get('/api/docs/admin', swaggerUi.setup(adminApiDoc, {
+  ...swaggerOptions,
+  customSiteTitle: 'Qmart Admin API Documentation',
+}));
 
 /**
  * GET /api/docs
