@@ -11,8 +11,8 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies with retry and timeout handling
-RUN npm ci --only=production --timeout=300000 || npm ci --only=production --timeout=300000
+# Install ALL dependencies (including devDependencies) for build
+RUN npm ci --timeout=300000 || npm ci --timeout=300000
 
 # Copy source code
 COPY . .
