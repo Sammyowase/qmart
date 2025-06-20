@@ -1,27 +1,35 @@
-# Multi-stage build for production
+
 FROM node:20.11.1-alpine3.19 AS builder
 
-# Security: Update packages and install security updates
 RUN apk update && apk upgrade && \
     apk add --no-cache dumb-init && \
     rm -rf /var/cache/apk/*
 
 WORKDIR /app
 
-# Copy package files
+
 COPY package*.json ./
 
-# Install ALL dependencies (including devDependencies) for build
 RUN npm ci --timeout=300000 || npm ci --timeout=300000
 
-# Copy source code
+
 COPY . .
 
-# Build TypeScript
-RUN npm run build
 
-# Copy any non-TS config files needed at runtime
-COPY src/config ./dist/config
+# Build TypeScript with Docker-specific configuration
+RUN npm run build:docker
+
+# Verify critical files exist
+RUN echo "📁 Verifying Docker build output:" && \
+    ls -la dist/ && \
+    ls -la dist/config/ && \
+    test -f dist/server.js && \
+    test -f dist/config/database.js && \
+    test -f dist/config/email.js && \
+    test -f dist/routes/kyc.routes.js && \
+    test -f dist/routes/admin.routes.js && \
+    test -f dist/monitoring/metrics.js && \
+    echo "✅ All critical files compiled successfully"
 
 # Production stage
 FROM node:20.11.1-alpine3.19 AS production

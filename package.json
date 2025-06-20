@@ -6,7 +6,11 @@
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
+    "build:docker": "npm run clean:docker && npm run compile:docker && npm run verify:docker",
+    "compile:docker": "tsc --project tsconfig.docker.json",
     "build:render": "npm install && tsc && npm run postbuild",
+    "clean:docker": "rimraf dist",
+    "verify:docker": "node scripts/verify-docker-build.js",
     "postbuild": "node scripts/post-build.js",
     "start": "node dist/server.js",
     "start:prod": "NODE_ENV=production node dist/server.js",

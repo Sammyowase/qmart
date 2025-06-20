@@ -1,4 +1,5 @@
 {
+  "extends": "./tsconfig.json",
   "compilerOptions": {
     "target": "ES2020",
     "module": "commonjs",
@@ -15,7 +16,7 @@
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "sourceMap": false,
-    "incremental": true,
+    "incremental": false,
     "noImplicitAny": true,
     "strictNullChecks": true,
     "strictFunctionTypes": true,
@@ -26,7 +27,7 @@
     "preserveConstEnums": true,
     "noEmitOnError": false,
     "listFiles": false,
-    "listEmittedFiles": false
+    "listEmittedFiles": true
   },
   "include": [
     "src/**/*"
