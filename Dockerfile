@@ -43,7 +43,7 @@ RUN npm cache clean --force
 
 # Copy built application from builder stage
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/swagger.yaml ./
+COPY --from=builder /app/swagger ./swagger
 
 # Security: Set proper file permissions
 RUN chown -R nodejs:nodejs /app && \
