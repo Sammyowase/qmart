@@ -20,6 +20,9 @@ COPY . .
 # Build TypeScript
 RUN npm run build
 
+# Copy any non-TS config files needed at runtime
+COPY src/config ./dist/config
+
 # Production stage
 FROM node:20.11.1-alpine3.19 AS production
 
