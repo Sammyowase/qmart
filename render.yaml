@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: qmart-backend
+    env: node
+    plan: starter
+    buildCommand: npm install && npm run build:render
+    startCommand: npm run start:prod
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+    healthCheckPath: /health
+    autoDeploy: true
+    branch: main
+    disk:
+      name: qmart-data
+      mountPath: /app/uploads
+      sizeGB: 1

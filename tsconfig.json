@@ -22,10 +22,9 @@
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "moduleResolution": "node",
-    "baseUrl": "./",
-    "paths": {
-      "@/*": ["src/*"]
-    }
+    "allowSyntheticDefaultImports": true,
+    "preserveConstEnums": true,
+    "noEmitOnError": false
   },
   "include": [
     "src/**/*"
